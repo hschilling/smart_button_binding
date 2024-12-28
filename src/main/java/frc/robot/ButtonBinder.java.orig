@@ -1,0 +1,207 @@
+package frc.robot;
+
+import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
+import edu.wpi.first.wpilibj.shuffleboard.ShuffleboardTab;
+import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
+import edu.wpi.first.wpilibj2.command.button.Trigger;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Supplier;
+
+/** Add your docs here. */
+public class ButtonBinder {
+    private CommandXboxController controller;
+    private Map<String, String> buttonUsages;
+    private Map<String, Supplier<Trigger>> buttonMappings;
+
+    public ButtonBinder(CommandXboxController controller) {
+        this.controller = controller;
+        this.buttonUsages = new HashMap<>();
+        
+        // Initialize all possible button mappings
+        this.buttonMappings = new HashMap<>();
+        initializeButtonMappings();
+
+    }
+
+    /**
+     * Initialize all available button mappings.
+     * Add new buttons here to extend functionality.
+     */
+    private void initializeButtonMappings() {
+        // Face buttons
+        buttonMappings.put("a", controller::a);
+        buttonMappings.put("b", controller::b);
+        buttonMappings.put("x", controller::x);
+        buttonMappings.put("y", controller::y);
+        
+        // Bumpers
+        buttonMappings.put("leftBumper", controller::leftBumper);
+        buttonMappings.put("rightBumper", controller::rightBumper);
+        
+        // // Back and Start
+        // buttonMappings.put("back", controller::back);
+        buttonMappings.put("back", controller::back);
+        buttonMappings.put("start", controller::start);
+        
+        // // Sticks
+        buttonMappings.put("leftStick", controller::leftStick);
+        buttonMappings.put("rightStick", controller::rightStick);
+    }
+
+    /**
+     * Get a button trigger with specified usage.
+     * @param buttonName The name of the button to bind
+     * @param usage The intended usage for this button
+     * @return Trigger for the requested button
+     * @throws IllegalStateException if button is already bound
+     * @throws IllegalArgumentException if button name is invalid
+     */
+    public Trigger getButton(String buttonName, String usage) {
+        // Validate button exists
+        if (!buttonMappings.containsKey(buttonName)) {
+            throw new IllegalArgumentException("Invalid button name: " + buttonName + 
+                "\nValid buttons are: " + String.join(", ", buttonMappings.keySet()));
+        }
+
+        // Check if button is already used
+        if (buttonUsages.containsKey(buttonName)) {
+            throw new IllegalStateException("Button '" + buttonName + 
+                "' has already been bound. Existing usage: " + buttonUsages.get(buttonName));
+        }
+
+        // Store the usage and return the trigger
+        buttonUsages.put(buttonName, usage);
+        return buttonMappings.get(buttonName).get();
+    }
+
+    /**
+     * Generates a detailed report of button usage.
+     * @return A string with a line-by-line report of each button's status
+     */
+    public String getButtonUsageReport() {
+        StringBuilder report = new StringBuilder();
+
+        // Sort the buttons for consistent reporting
+        buttonMappings.keySet().stream().sorted().forEach(button -> {
+            report.append("Button '").append(button).append("': ");
+            
+            if (buttonUsages.containsKey(button)) {
+                report.append("Used - ").append(buttonUsages.get(button));
+            } else {
+                report.append("Unused");
+            }
+            
+            report.append("\n");
+        });
+
+        return report.toString();
+    }
+
+
+    public void makeStatusDashboardWidgets(String buttonsTabName) {
+        ShuffleboardTab buttonsTab = Shuffleboard.getTab(buttonsTabName);
+
+        Object[][] array = {
+            {"a", 0, 0},
+            {"b", 0, 1},
+            {"x", 0, 2},
+            {"y", 0, 3},
+            {"leftBumper", 4, 0},
+            {"rightBumper", 4, 1},
+            {"leftStick", 4, 2},
+            {"rightStick", 4, 3},
+            {"back", 8, 0},
+            {"start", 8, 1}
+            };
+    int width;
+
+    for (Object[] subArray : array) {
+        String buttonName = (String) subArray[0];
+        int iColumn = (int) subArray[1];
+        int iRow = (int) subArray[2];
+        if (isButtonUsed(buttonName)) {
+            width = 3;
+        } else {
+            width = 2;
+        }
+        buttonsTab.add(buttonName, getButtonStatus(buttonName)).withSize(width, 1).withPosition(iColumn, iRow);
+    }
+    
+    }
+
+    /**
+     * Generates widgets on the Buttons tab of the dashboard.
+     * @return A string with a line-by-line report of each button's status
+     */
+    public void makeStatusDashboardWidgetsOld(String buttonsTabName) {
+
+        ShuffleboardTab buttonsTab = Shuffleboard.getTab(buttonsTabName);
+
+        int iRow = 0;
+        int iButton = 0;
+
+        for (String button : buttonMappings.keySet()) {
+            int width, iColumn ;
+            if (isButtonUsed(button)) {
+                width = 3;
+            } else {
+                width = 2;
+            }
+            if (iButton == 5) iRow = 0;
+            if (iButton > 4) {
+                iColumn = 4;
+            } else {
+                iColumn = 0;
+            }
+            buttonsTab.add(button, getButtonStatus(button)).withSize(width, 1).withPosition(iColumn, iRow);
+            iRow++;
+            iButton++;
+        }
+
+        return ;
+    }
+
+    public Boolean isButtonUsed(String buttonName) {
+        // Validate the button name
+        if (!buttonMappings.containsKey(buttonName)) {
+            throw new IllegalArgumentException("Invalid button name: " + buttonName);
+        }
+
+        // Check if the button has been used
+        if (buttonUsages.containsKey(buttonName)) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    /**
+     * Returns the status of a specific button.
+     * @param buttonName The name of the button to check
+     * @return A string describing the button's status (usage or unused)
+     * @throws IllegalArgumentException if the button name is not valid
+     */
+    public String getButtonStatus(String buttonName) {
+        // Validate the button name
+        if (!buttonMappings.containsKey(buttonName)) {
+            throw new IllegalArgumentException("Invalid button name: " + buttonName);
+        }
+
+        // Check if the button has been used
+        if (buttonUsages.containsKey(buttonName)) {
+            return "Used - " + buttonUsages.get(buttonName);
+        }
+
+        return "Unused";
+    }
+
+    /**
+     * Get all available button names.
+     * @return Set of valid button names
+     */
+    public Set<String> getAvailableButtons() {
+        return buttonMappings.keySet();
+    }
+}
